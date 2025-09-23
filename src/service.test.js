@@ -17,6 +17,7 @@ test("login", async () => {
   expectValidJwt(loginRes.body.token);
 
   const { password, ...user } = { ...testUser, roles: [{ role: "diner" }] };
+  console.log(password);
   expect(loginRes.body.user).toMatchObject(user);
 });
 
