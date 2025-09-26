@@ -24,5 +24,5 @@
 //   return { ...user, password: "supersecretpw" };
 // }
 
-// test("placeholder", () => {});
+test("placeholder", () => {});
 console.log("be nice to me linter");
