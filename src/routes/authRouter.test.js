@@ -1,5 +1,5 @@
 const request = require("supertest");
-const app = require("./service");
+const app = require("../service");
 
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
 let testUserAuthToken;
@@ -16,9 +16,9 @@ test("login", async () => {
   expect(loginRes.status).toBe(200);
   expectValidJwt(loginRes.body.token);
 
-  const { password, ...user } = { ...testUser, roles: [{ role: "diner" }] };
-  console.log(password);
-  expect(loginRes.body.user).toMatchObject(user);
+  const expectedUser = { ...testUser, roles: [{ role: "diner" }] };
+  delete expectedUser.password;
+  expect(loginRes.body.user).toMatchObject(expectedUser);
 });
 
 function expectValidJwt(potentialJwt) {
