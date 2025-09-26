@@ -4,7 +4,9 @@
 
 <!-- ![Coverage badge](https://pizza-factory.cs329.click/api/badge/mericar/jwtpizzaservicecoverage) -->
 
-![Coverage badge](https://pizza-factory.cs329.click/api/badge/mericar/jwtpizzaservicecoverage.svg)
+<!-- ![Coverage badge](https://pizza-factory.cs329.click/api/badge/mericar/jwtpizzaservicecoverage.svg) -->
+
+![Coverage badge](https://pizza-factory.cs329.click/api/badge/mericar/jwtpizzaservicecoverage.svg?cacheBust=1)
 
 Backend service for making JWT pizzas. This service tracks users and franchises and orders pizzas. All order requests are passed to the JWT Pizza Factory where the pizzas are made.
 
