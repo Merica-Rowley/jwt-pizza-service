@@ -2,7 +2,6 @@ const request = require("supertest");
 const app = require("../service");
 
 const { Role, DB } = require("../database/database.js");
-const { get } = require("./orderRouter.js");
 
 function randomName() {
   return Math.random().toString(36).substring(2, 12);
