@@ -2,6 +2,7 @@ const request = require("supertest");
 const app = require("../service");
 
 const { Role, DB } = require("../database/database.js");
+const { get } = require("./orderRouter.js");
 
 function randomName() {
   return Math.random().toString(36).substring(2, 12);
@@ -19,7 +20,7 @@ async function createAdminUser() {
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
 let testUserAuthToken;
 
-let item = {
+let testItem = {
   title: randomName(),
   description: "pizza pizza",
   image: "pizza1.png",
@@ -49,7 +50,7 @@ test("attempt to add items as diner", async () => {
   const addMenuItemRes = await request(app)
     .put("/api/order/menu")
     .set("Authorization", `Bearer ${loginRes.body.token}`)
-    .send({ ...item });
+    .send({ ...testItem });
   expect(addMenuItemRes.status).toBe(403);
   expect(addMenuItemRes.body.message).toBe("unable to add menu item");
 });
@@ -69,17 +70,38 @@ test("add items to menu as admin", async () => {
   const addMenuItemRes = await request(app)
     .put("/api/order/menu")
     .set("Authorization", `Bearer ${adminLoginRes.body.token}`)
-    .send({ ...item });
+    .send({ ...testItem });
   expect(addMenuItemRes.status).toBe(200);
   const newMenu = await getMenu();
   expect(newMenu).toHaveLength(numItemsBefore + 1);
   expect(newMenu).toContainEqual(
     expect.objectContaining({
-      title: item.title,
-      description: item.description,
-      price: item.price,
+      title: testItem.title,
+      description: testItem.description,
+      price: testItem.price,
     })
   );
+});
+
+test("get orders", getOrders);
+
+async function getOrders() {
+  // login as test user
+  const loginRes = await request(app).put("/api/auth").send(testUser);
+  expectValidJwt(loginRes.body.token);
+
+  const orderRes = await request(app)
+    .get("/api/order")
+    .set("Authorization", `Bearer ${testUserAuthToken}`);
+  expect(orderRes.status).toBe(200);
+  expect(Array.isArray(orderRes.body.orders)).toBe(true);
+  return orderRes.body;
+}
+
+test("create order", async () => {
+  const orders = getOrders();
+
+  // TODO: finish this test
 });
 
 function expectValidJwt(potentialJwt) {
