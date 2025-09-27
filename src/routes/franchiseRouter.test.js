@@ -25,14 +25,14 @@ async function createAdminUser() {
   return { ...user, password: "toomanysecrets" };
 }
 
-async function createFranchiseeUser() {
-  let user = { password: "supersecretpw", roles: [{ role: Role.Franchisee }] };
-  user.name = randomName();
-  user.email = user.name + "@franchisee.com";
+// async function createFranchiseeUser() {
+//   let user = { password: "supersecretpw", roles: [{ role: Role.Franchisee }] };
+//   user.name = randomName();
+//   user.email = user.name + "@franchisee.com";
 
-  user = await DB.addUser(user);
-  return { ...user, password: "supersecretpw" };
-}
+//   user = await DB.addUser(user);
+//   return { ...user, password: "supersecretpw" };
+// }
 
 test("get franchises", async () => {
   const franchiseRes = await request(app).get("/api/franchise");
