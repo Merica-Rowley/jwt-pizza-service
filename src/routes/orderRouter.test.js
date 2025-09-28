@@ -98,8 +98,84 @@ async function getOrders() {
 }
 
 test("create order", async () => {
-  //   const orders = getOrders();
-  // TODO: finish this test
+  // Step 1: Create a franchise
+  const adminUser = await createAdminUser();
+  const adminLoginRes = await request(app)
+    .put("/api/auth")
+    .send({ email: adminUser.email, password: adminUser.password });
+  expectValidJwt(adminLoginRes.body.token);
+  let testAdminAuthToken = adminLoginRes.body.token;
+
+  const franchiseReq = {
+    name: randomName(),
+    admins: [{ email: testUser.email }],
+  };
+  const createFranchiseRes = await request(app)
+    .post("/api/franchise")
+    .set("Authorization", `Bearer ${testAdminAuthToken}`)
+    .send(franchiseReq);
+  expect(createFranchiseRes.status).toBe(200);
+  expect(createFranchiseRes.body).toMatchObject({ name: franchiseReq.name });
+
+  // Step 2: Create a store for the franchise
+  const franchiseId = createFranchiseRes.body.id;
+  const storeReq = { name: randomName() };
+  const createStoreRes = await request(app)
+    .post(`/api/franchise/${franchiseId}/store`)
+    .set("Authorization", `Bearer ${testAdminAuthToken}`)
+    .send(storeReq);
+  expect(createStoreRes.status).toBe(200);
+  expect(createStoreRes.body).toMatchObject({
+    name: storeReq.name,
+    id: expect.any(Number),
+  });
+
+  // Step 3: Create an order as the test user
+  const menu = await getMenu();
+  const orderReq = {
+    franchiseId: createFranchiseRes.body.id,
+    storeId: createStoreRes.body.id,
+    items: [
+      {
+        menuId: menu[0].id,
+        description: menu[0].description,
+        price: menu[0].price,
+      },
+    ],
+  };
+
+  const createOrderRes = await request(app)
+    .post("/api/order")
+    .set("Authorization", `Bearer ${testUserAuthToken}`)
+    .send(orderReq);
+  expect(createOrderRes.status).toBe(200);
+  expect(createOrderRes.body).toMatchObject({
+    order: {
+      franchiseId: orderReq.franchiseId,
+      storeId: orderReq.storeId,
+      items: orderReq.items,
+      id: expect.any(Number),
+    },
+    jwt: expect.any(String),
+  });
+  expectValidJwt(createOrderRes.body.jwt);
+
+  // Step 4: Verify the order shows up in the user's order list
+  const orders = await getOrders();
+  expect(orders.orders).toContainEqual(
+    expect.objectContaining({
+      id: expect.any(Number),
+      franchiseId: orderReq.franchiseId,
+      storeId: orderReq.storeId,
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          menuId: orderReq.items[0].menuId,
+          description: orderReq.items[0].description,
+          price: orderReq.items[0].price,
+        }),
+      ]),
+    })
+  );
 });
 
 function expectValidJwt(potentialJwt) {
