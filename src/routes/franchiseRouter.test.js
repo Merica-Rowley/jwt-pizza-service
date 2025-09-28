@@ -5,56 +5,11 @@ const { Role, DB } = require("../database/database.js");
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
 let testUserAuthToken;
 
-const franchiseUser = {
-  name: "pizza franchisee",
-  email: "fran@test.com",
-  password: "b",
-  roles: [
-    {
-      role: Role.Franchisee,
-    },
-  ],
-};
-let testFranchiseeAuthToken;
-
-// const adminUser = {
-//   name: "pizza admin",
-//   email: "admin@test.com",
-//   password: "c",
-//   roles: [
-//     {
-//       role: Role.Admin,
-//     },
-//   ],
-// };
-// let testAdminAuthToken;
-
 beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
   const registerRes = await request(app).post("/api/auth").send(testUser);
   testUserAuthToken = registerRes.body.token;
   expectValidJwt(testUserAuthToken);
-
-  // franchiseUser.email =
-  //   Math.random().toString(36).substring(2, 12) + "@test.com";
-  // // const franchiseeRegisterRes = await request(app)
-  // //   .post("/api/auth")
-  // //   .send(franchiseUser);
-  // await DB.addUser(franchiseUser);
-  // const franchiseLoginRes = await request(app)
-  //   .put("/api/auth")
-  //   .send(franchiseUser);
-  // expect(franchiseLoginRes.status).toBe(200);
-  // expectValidJwt(franchiseLoginRes.body.token);
-  // testFranchiseeAuthToken = franchiseLoginRes.body.token;
-
-  // adminUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
-  // // const adminRegisterRes = await request(app).post("/api/auth").send(adminUser);
-  // await DB.addUser(adminUser);
-  // const adminLoginRes = await request(app).put("/api/auth").send(adminUser);
-  // testAdminAuthToken = adminRegisterRes.body.token;
-  // expectValidJwt(testAdminAuthToken);
-  // testAdminAuthToken = adminLoginRes.body.token;
 });
 
 function randomName() {
@@ -69,15 +24,6 @@ async function createAdminUser() {
   user = await DB.addUser(user);
   return { ...user, password: "toomanysecrets" };
 }
-
-// async function createFranchiseUser() {
-//   let user = { password: "toomanysecrets", roles: [{ role: Role.Franchisee }] };
-//   user.name = randomName();
-//   user.email = user.name + "@franchisee.com";
-
-//   user = await DB.addUser(user);
-//   return { ...user, password: "superdupersecret" };
-// }
 
 test("create franchise for unknown franchisee", async () => {
   const adminUser = await createAdminUser();
