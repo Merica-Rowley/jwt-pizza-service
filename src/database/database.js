@@ -246,7 +246,7 @@ class DB {
         await this.query(
           connection,
           `INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)`,
-          [admin.id, Role.Franchisee, franchise.id]
+          [admin.id, Role.Franchisee, franchise.id] // Hold on, why is this Role.Franchisee?
         );
       }
 

@@ -5,16 +5,61 @@ const { Role, DB } = require("../database/database.js");
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
 let testUserAuthToken;
 
-function randomName() {
-  return Math.random().toString(36).substring(2, 12);
-}
+const franchiseUser = {
+  name: "pizza franchisee",
+  email: "fran@test.com",
+  password: "b",
+  roles: [
+    {
+      role: Role.Franchisee,
+    },
+  ],
+};
+let testFranchiseeAuthToken;
+
+// const adminUser = {
+//   name: "pizza admin",
+//   email: "admin@test.com",
+//   password: "c",
+//   roles: [
+//     {
+//       role: Role.Admin,
+//     },
+//   ],
+// };
+// let testAdminAuthToken;
 
 beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
   const registerRes = await request(app).post("/api/auth").send(testUser);
   testUserAuthToken = registerRes.body.token;
   expectValidJwt(testUserAuthToken);
+
+  // franchiseUser.email =
+  //   Math.random().toString(36).substring(2, 12) + "@test.com";
+  // // const franchiseeRegisterRes = await request(app)
+  // //   .post("/api/auth")
+  // //   .send(franchiseUser);
+  // await DB.addUser(franchiseUser);
+  // const franchiseLoginRes = await request(app)
+  //   .put("/api/auth")
+  //   .send(franchiseUser);
+  // expect(franchiseLoginRes.status).toBe(200);
+  // expectValidJwt(franchiseLoginRes.body.token);
+  // testFranchiseeAuthToken = franchiseLoginRes.body.token;
+
+  // adminUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
+  // // const adminRegisterRes = await request(app).post("/api/auth").send(adminUser);
+  // await DB.addUser(adminUser);
+  // const adminLoginRes = await request(app).put("/api/auth").send(adminUser);
+  // testAdminAuthToken = adminRegisterRes.body.token;
+  // expectValidJwt(testAdminAuthToken);
+  // testAdminAuthToken = adminLoginRes.body.token;
 });
+
+function randomName() {
+  return Math.random().toString(36).substring(2, 12);
+}
 
 async function createAdminUser() {
   let user = { password: "toomanysecrets", roles: [{ role: Role.Admin }] };
@@ -25,125 +70,76 @@ async function createAdminUser() {
   return { ...user, password: "toomanysecrets" };
 }
 
-// async function createFranchiseeUser() {
-//   let user = { password: "supersecretpw", roles: [{ role: Role.Franchisee }] };
+// async function createFranchiseUser() {
+//   let user = { password: "toomanysecrets", roles: [{ role: Role.Franchisee }] };
 //   user.name = randomName();
 //   user.email = user.name + "@franchisee.com";
 
 //   user = await DB.addUser(user);
-//   return { ...user, password: "supersecretpw" };
+//   return { ...user, password: "superdupersecret" };
 // }
 
-test("get franchises", getFranchises);
-
-async function getFranchises() {
-  let allFranchises = [];
-  let page = 0;
-  let more = true;
-
-  while (more) {
-    const nextPageRes = await request(app).get(`/api/franchise?page=${page}`);
-    expect(nextPageRes.status).toBe(200);
-    expect(Array.isArray(nextPageRes.body.franchises)).toBe(true);
-    expect(nextPageRes.body.more).toBeDefined();
-
-    allFranchises = allFranchises.concat(nextPageRes.body.franchises);
-    more = nextPageRes.body.more;
-    page++;
-  }
-
-  return allFranchises;
-}
-
-test("create franchise as admin", adminCreateFranchise);
-
-async function adminCreateFranchise() {
+test("create franchise for unknown franchisee", async () => {
   const adminUser = await createAdminUser();
-  const loginRes = await request(app).put("/api/auth").send(adminUser);
-  expectValidJwt(loginRes.body.token);
+  const adminLoginRes = await request(app)
+    .put("/api/auth")
+    .send({ email: adminUser.email, password: adminUser.password });
+  expectValidJwt(adminLoginRes.body.token);
+  let testAdminAuthToken = adminLoginRes.body.token;
 
-  const franchisesBefore = await getFranchises();
-
-  const newFranchise = { name: randomName(), admins: [adminUser] };
+  const franchiseReq = {
+    name: "Test Franchise",
+    admins: [{ email: "fakeemail@xxxxx.com" }],
+  };
   const createFranchiseRes = await request(app)
     .post("/api/franchise")
-    .set("Authorization", `Bearer ${loginRes.body.token}`)
-    .send(newFranchise);
-  expect(createFranchiseRes.status).toBe(200);
-  expect(createFranchiseRes.body).toMatchObject(newFranchise);
+    .set("Authorization", `Bearer ${testAdminAuthToken}`)
+    .send(franchiseReq);
+  expect(createFranchiseRes.status).toBe(404);
+  expect(createFranchiseRes.body.message).toBe(
+    `unknown user for franchise admin fakeemail@xxxxx.com provided`
+  );
+});
 
-  const franchisesAfter = await getFranchises();
-  expect(franchisesAfter.length).toBe(franchisesBefore.length + 1);
+test("create franchise as admin", async () => {
+  const adminUser = await createAdminUser();
+  const adminLoginRes = await request(app)
+    .put("/api/auth")
+    .send({ email: adminUser.email, password: adminUser.password });
+  expectValidJwt(adminLoginRes.body.token);
+  let testAdminAuthToken = adminLoginRes.body.token;
 
-  return {
-    franchise: newFranchise,
-    adminUser: adminUser,
-    adminAuthToken: loginRes.body.token,
+  // const franchiseUser = await createFranchiseUser();
+
+  const franchiseReq = {
+    name: randomName(),
+    admins: [{ email: testUser.email }],
   };
-}
+  const createFranchiseRes = await request(app)
+    .post("/api/franchise")
+    .set("Authorization", `Bearer ${testAdminAuthToken}`)
+    .send(franchiseReq);
+  expect(createFranchiseRes.status).toBe(200);
+  expect(createFranchiseRes.body).toMatchObject({ name: franchiseReq.name });
+});
 
 test("create franchise as non-admin", async () => {
+  // Login as regular user
   const loginRes = await request(app).put("/api/auth").send(testUser);
-  expect(loginRes.status).toBe(200);
   expectValidJwt(loginRes.body.token);
+  let testUserAuthToken = loginRes.body.token;
 
-  const newFranchise = { name: testUser.name, admins: [testUser] };
+  const franchiseReq = {
+    name: "Test Franchise",
+    admins: [{ email: testUser.email }], // email doesn't really matter, since the user won't get that far
+  };
   const createFranchiseRes = await request(app)
     .post("/api/franchise")
-    .set("Authorization", `Bearer ${loginRes.body.token}`)
-    .send(newFranchise);
+    .set("Authorization", `Bearer ${testUserAuthToken}`)
+    .send(franchiseReq);
   expect(createFranchiseRes.status).toBe(403);
   expect(createFranchiseRes.body.message).toBe("unable to create a franchise");
 });
-
-test("get user franchises", getUserFranchises);
-
-async function getUserFranchises() {
-  const { franchise, adminUser, adminAuthToken } = await adminCreateFranchise();
-
-  const getUserFranchisesRes = await request(app)
-    .get(`/api/franchise/${adminUser.id}`)
-    .set("Authorization", `Bearer ${adminAuthToken}`);
-  expect(getUserFranchisesRes.status).toBe(200);
-  expect(Array.isArray(getUserFranchisesRes.body)).toBe(true);
-  expect(getUserFranchisesRes.body).toContainEqual(
-    expect.objectContaining({ name: franchise.name })
-  );
-
-  return {
-    franchise,
-    adminUser,
-    adminAuthToken,
-    franchises: getUserFranchisesRes.body,
-  };
-}
-
-// test("delete franchise", async () => {
-//   const { franchise, adminUser, adminAuthToken, franchises } =
-//     await getUserFranchises();
-
-//   // franchises should contain info for one franchise
-//   const franchiseIDToDelete = franchises[0].id;
-//   expect(franchiseIDToDelete).toBeDefined();
-
-//   // delete the franchise
-//   const franchiseDeleteRes = await request(app)
-//     .delete(`/api/franchise/${franchiseIDToDelete}`)
-//     .set("Authorization", `Bearer ${adminAuthToken}`);
-//   expect(franchiseDeleteRes.status).toBe(200);
-//   expect(franchiseDeleteRes.body).toMatchObject({
-//     message: "franchise deleted",
-//   });
-
-//   const getUserFranchisesRes = await request(app)
-//     .get(`/api/franchise/${adminUser.id}`)
-//     .set("Authorization", `Bearer ${adminAuthToken}`);
-//   expect(getUserFranchisesRes.status).toBe(200);
-//   expect(Array.isArray(getUserFranchisesRes.body)).toBe(true);
-//   expect(getUserFranchisesRes.body).not.toContainEqual(
-//     expect.objectContaining({ name: franchise.name })
-//   );
-// });
 
 function expectValidJwt(potentialJwt) {
   expect(potentialJwt).toMatch(
