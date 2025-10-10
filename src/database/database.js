@@ -5,8 +5,19 @@ const { StatusCodeError } = require("../endpointHelper.js");
 const { Role } = require("../model/model.js");
 const dbModel = require("./dbModel.js");
 class DB {
+  // constructor() {
+  //   this.initialized = this.initializeDatabase();
+  // }
   constructor() {
-    this.initialized = this.initializeDatabase();
+    this.initialized = null; // don't start automatically
+  }
+
+  async init() {
+    if (!this.initialized) {
+      console.log("Initializing database:", config.db.connection.database);
+      this.initialized = this.initializeDatabase();
+    }
+    return this.initialized;
   }
 
   async getMenu() {
@@ -440,6 +451,12 @@ class DB {
   }
 
   async initializeDatabase() {
+    if (process.env.NODE_ENV === "test") {
+      console.log(
+        `⚙️ Initializing TEST database: ${config.db.connection.database}`
+      );
+    }
+
     try {
       const connection = await this._getConnection(false);
       try {
@@ -494,4 +511,4 @@ class DB {
 }
 
 const db = new DB();
-module.exports = { Role, DB: db };
+module.exports = { Role, db };

@@ -5,5 +5,9 @@
     "global": {
       "lines": 80
     }
-  }
+  },
+  "globalSetup": "./tests/setup/globalSetup.js",
+  "globalTeardown": "./tests/setup/globalTeardown.js",
+  "testEnvironment": "node",
+  "setupFiles": ["dotenv/config"]
 }

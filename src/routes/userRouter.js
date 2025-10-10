@@ -1,6 +1,6 @@
 const express = require("express");
 const { asyncHandler } = require("../endpointHelper.js");
-const { DB, Role } = require("../database/database.js");
+const { db, Role } = require("../database/database.js");
 const { authRouter, setAuth } = require("./authRouter.js");
 
 const userRouter = express.Router();
@@ -42,6 +42,7 @@ userRouter.get(
   "/me",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
+    await db.init();
     res.json(req.user);
   })
 );
@@ -51,6 +52,7 @@ userRouter.put(
   "/:userId",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
+    await db.init();
     const { name, email, password } = req.body;
     const userId = Number(req.params.userId);
     const user = req.user;
@@ -58,7 +60,7 @@ userRouter.put(
       return res.status(403).json({ message: "unauthorized" });
     }
 
-    const updatedUser = await DB.updateUser(userId, name, email, password);
+    const updatedUser = await db.updateUser(userId, name, email, password);
     const auth = await setAuth(updatedUser);
     res.json({ user: updatedUser, token: auth });
   })
