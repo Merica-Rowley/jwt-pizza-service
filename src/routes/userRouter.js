@@ -20,6 +20,29 @@ userRouter.docs = [
     },
   },
   {
+    method: "GET",
+    path: "/api/user?page=1&limit=10&name=*",
+    description: "List all the users",
+    example: `curl localhost:3000/api/franchise&page=0&limit=10&name=pizzaPocket`,
+    response: {
+      users: [
+        {
+          id: 3,
+          name: "Kai Chen",
+          email: "d@jwt.com",
+          roles: [{ role: "diner" }],
+        },
+        {
+          id: 5,
+          name: "Buddy",
+          email: "b@jwt.com",
+          roles: [{ role: "admin" }],
+        },
+      ],
+      more: true,
+    },
+  },
+  {
     method: "PUT",
     path: "/api/user/:userId",
     requiresAuth: true,
@@ -52,6 +75,26 @@ userRouter.get(
   asyncHandler(async (req, res) => {
     await db.init();
     res.json(req.user);
+  })
+);
+
+// getUsers
+userRouter.get(
+  "/",
+  authRouter.authenticateToken,
+  asyncHandler(async (req, res) => {
+    if (req.user.isRole(Role.Admin)) {
+      await db.init();
+      const [users, more] = await db.getUsers(
+        req.user,
+        req.query.page,
+        req.query.limit,
+        req.query.name
+      );
+      res.json({ users, more });
+    } else {
+      return res.status(403).json({ message: "unauthorized" });
+    }
   })
 );
 

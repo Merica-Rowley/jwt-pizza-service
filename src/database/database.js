@@ -146,6 +146,32 @@ class DB {
     }
   }
 
+  async getUsers(authUser, page = 0, limit = 10, nameFilter = "*") {
+    const connection = await this.getConnection();
+
+    const offset = page * limit;
+    nameFilter = nameFilter.replace(/\*/g, "%"); // TODO: Go fix the front end to work with this!
+
+    try {
+      let users = await this.query(
+        connection,
+        `SELECT id, name FROM user WHERE name LIKE ? LIMIT ${
+          limit + 1
+        } OFFSET ${offset}`,
+        [nameFilter]
+      );
+
+      const more = users.length > limit;
+      if (more) {
+        users = users.slice(0, limit);
+      }
+
+      return [users, more];
+    } finally {
+      connection.end();
+    }
+  }
+
   async updateUser(userId, name, email, password) {
     const connection = await this.getConnection();
     try {
@@ -498,12 +524,6 @@ class DB {
   }
 
   async initializeDatabase() {
-    if (process.env.NODE_ENV === "test") {
-      console.log(
-        `⚙️ Initializing TEST database: ${config.db.connection.database}`
-      );
-    }
-
     try {
       const connection = await this._getConnection(false);
       try {
