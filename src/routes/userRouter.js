@@ -1,5 +1,5 @@
 const express = require("express");
-const { asyncHandler } = require("../endpointHelper.js");
+const { asyncHandler, StatusCodeError } = require("../endpointHelper.js");
 const { db, Role } = require("../database/database.js");
 const { authRouter, setAuth } = require("./authRouter.js");
 
@@ -35,6 +35,14 @@ userRouter.docs = [
       token: "tttttt",
     },
   },
+  {
+    method: "DELETE",
+    path: "/api/user/:userId",
+    requiresAuth: true,
+    description: "Delete user",
+    example: `curl -X DELETE localhost:3000/api/user/1 -H 'Authorization: Bearer tttttt`,
+    response: { message: "User removed successfully" },
+  },
 ];
 
 // getUser
@@ -63,6 +71,23 @@ userRouter.put(
     const updatedUser = await db.updateUser(userId, name, email, password);
     const auth = await setAuth(updatedUser);
     res.json({ user: updatedUser, token: auth });
+  })
+);
+
+// deleteuser
+userRouter.delete(
+  "/:userId",
+  authRouter.authenticateToken,
+  asyncHandler(async (req, res) => {
+    await db.init();
+    const userId = Number(req.params.userId);
+    const foundUser = await db.getUserById(userId);
+    if (!foundUser || !req.user.isRole(Role.Admin)) {
+      throw new StatusCodeError("unable to delete a user", 403);
+    }
+
+    await db.deleteUser(userId);
+    res.json({ message: "user deleted" });
   })
 );
 

@@ -118,6 +118,34 @@ class DB {
     }
   }
 
+  async getUserById(id) {
+    const connection = await this.getConnection();
+    try {
+      const userResult = await this.query(
+        connection,
+        `SELECT * FROM user WHERE id=?`,
+        [id]
+      );
+      const user = userResult[0];
+      if (!user) {
+        throw new StatusCodeError("unknown user", 404);
+      }
+
+      const roleResult = await this.query(
+        connection,
+        `SELECT * FROM userRole WHERE userId=?`,
+        [id]
+      );
+      const roles = roleResult.map((r) => {
+        return { objectId: r.objectId || undefined, role: r.role };
+      });
+
+      return { ...user, roles: roles, password: undefined };
+    } finally {
+      connection.end();
+    }
+  }
+
   async updateUser(userId, name, email, password) {
     const connection = await this.getConnection();
     try {
@@ -137,6 +165,25 @@ class DB {
         await this.query(connection, query);
       }
       return this.getUser(email, password);
+    } finally {
+      connection.end();
+    }
+  }
+
+  async deleteUser(userId) {
+    const connection = await this.getConnection();
+    try {
+      await connection.beginTransaction();
+      try {
+        await this.query(connection, `DELETE FROM userRole WHERE userId=?`, [
+          userId,
+        ]);
+        await this.query(connection, `DELETE FROM user WHERE id=?`, [userId]);
+        await connection.commit();
+      } catch {
+        await connection.rollback();
+        throw new StatusCodeError("unable to delete user", 500);
+      }
     } finally {
       connection.end();
     }
