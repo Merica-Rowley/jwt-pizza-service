@@ -150,7 +150,7 @@ class DB {
     const connection = await this.getConnection();
 
     const offset = page * limit;
-    nameFilter = nameFilter.replace(/\*/g, "%"); // TODO: Go fix the front end to work with this!
+    nameFilter = nameFilter.replace(/\*/g, "%");
 
     try {
       let users = await this.query(
