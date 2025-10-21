@@ -1,6 +1,6 @@
 const express = require("express");
 const config = require("../config.js");
-const { Role, db } = require("../database/database.js");
+const { Role, DB } = require("../database/database.js");
 const { authRouter } = require("./authRouter.js");
 const { asyncHandler, StatusCodeError } = require("../endpointHelper.js");
 
@@ -80,8 +80,7 @@ orderRouter.docs = [
 orderRouter.get(
   "/menu",
   asyncHandler(async (req, res) => {
-    await db.init();
-    res.send(await db.getMenu());
+    res.send(await DB.getMenu());
   })
 );
 
@@ -90,14 +89,13 @@ orderRouter.put(
   "/menu",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    await db.init();
     if (!req.user.isRole(Role.Admin)) {
       throw new StatusCodeError("unable to add menu item", 403);
     }
 
     const addMenuItemReq = req.body;
-    await db.addMenuItem(addMenuItemReq);
-    res.send(await db.getMenu());
+    await DB.addMenuItem(addMenuItemReq);
+    res.send(await DB.getMenu());
   })
 );
 
@@ -106,8 +104,7 @@ orderRouter.get(
   "/",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    await db.init();
-    res.json(await db.getOrders(req.user, req.query.page));
+    res.json(await DB.getOrders(req.user, req.query.page));
   })
 );
 
@@ -116,9 +113,8 @@ orderRouter.post(
   "/",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    await db.init();
     const orderReq = req.body;
-    const order = await db.addDinerOrder(req.user, orderReq);
+    const order = await DB.addDinerOrder(req.user, orderReq);
     const r = await fetch(`${config.factory.url}/api/order`, {
       method: "POST",
       headers: {
@@ -134,12 +130,10 @@ orderRouter.post(
     if (r.ok) {
       res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
     } else {
-      res
-        .status(500)
-        .send({
-          message: "Failed to fulfill order at factory",
-          followLinkToEndChaos: j.reportUrl,
-        });
+      res.status(500).send({
+        message: "Failed to fulfill order at factory",
+        followLinkToEndChaos: j.reportUrl,
+      });
     }
   })
 );

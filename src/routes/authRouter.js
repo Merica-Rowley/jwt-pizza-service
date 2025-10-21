@@ -2,7 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const config = require("../config.js");
 const { asyncHandler } = require("../endpointHelper.js");
-const { db, Role } = require("../database/database.js");
+const { DB, Role } = require("../database/database.js");
 
 const authRouter = express.Router();
 
@@ -48,11 +48,10 @@ authRouter.docs = [
 ];
 
 async function setAuthUser(req, res, next) {
-  await db.init();
   const token = readAuthToken(req);
   if (token) {
     try {
-      if (await db.isLoggedIn(token)) {
+      if (await DB.isLoggedIn(token)) {
         // Check the database to make sure the token is valid.
         req.user = jwt.verify(token, config.jwtSecret);
         req.user.isRole = (role) =>
@@ -77,14 +76,13 @@ authRouter.authenticateToken = (req, res, next) => {
 authRouter.post(
   "/",
   asyncHandler(async (req, res) => {
-    await db.init();
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res
         .status(400)
         .json({ message: "name, email, and password are required" });
     }
-    const user = await db.addUser({
+    const user = await DB.addUser({
       name,
       email,
       password,
@@ -99,9 +97,8 @@ authRouter.post(
 authRouter.put(
   "/",
   asyncHandler(async (req, res) => {
-    await db.init();
     const { email, password } = req.body;
-    const user = await db.getUser(email, password);
+    const user = await DB.getUser(email, password);
     const auth = await setAuth(user);
     res.json({ user: user, token: auth });
   })
@@ -112,24 +109,21 @@ authRouter.delete(
   "/",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    await db.init();
     await clearAuth(req);
     res.json({ message: "logout successful" });
   })
 );
 
 async function setAuth(user) {
-  await db.init();
   const token = jwt.sign(user, config.jwtSecret);
-  await db.loginUser(user.id, token);
+  await DB.loginUser(user.id, token);
   return token;
 }
 
 async function clearAuth(req) {
-  await db.init();
   const token = readAuthToken(req);
   if (token) {
-    await db.logoutUser(token);
+    await DB.logoutUser(token);
   }
 }
 

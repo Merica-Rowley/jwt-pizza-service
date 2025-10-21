@@ -5,19 +5,8 @@ const { StatusCodeError } = require("../endpointHelper.js");
 const { Role } = require("../model/model.js");
 const dbModel = require("./dbModel.js");
 class DB {
-  // constructor() {
-  //   this.initialized = this.initializeDatabase();
-  // }
   constructor() {
-    this.initialized = null; // don't start automatically
-  }
-
-  async init() {
-    if (!this.initialized) {
-      console.log("Initializing database:", config.db.connection.database);
-      this.initialized = this.initializeDatabase();
-    }
-    return this.initialized;
+    this.initialized = this.initializeDatabase();
   }
 
   async getMenu() {
@@ -146,7 +135,8 @@ class DB {
     }
   }
 
-  async getUsers(authUser, page = 0, limit = 10, nameFilter = "*") {
+  async getUsers(page = 0, limit = 10, nameFilter = "*") {
+    // removed authUser parameter
     const connection = await this.getConnection();
 
     const offset = page * limit;
@@ -578,4 +568,4 @@ class DB {
 }
 
 const db = new DB();
-module.exports = { Role, db };
+module.exports = { Role, DB: db };

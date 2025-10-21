@@ -1,6 +1,6 @@
 const request = require("supertest");
 const app = require("../service");
-const { Role, db } = require("../database/database.js");
+const { Role, DB } = require("../database/database.js");
 const { StatusCodeError } = require("../endpointHelper.js");
 
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
@@ -36,12 +36,11 @@ function randomName() {
 }
 
 async function createAdminUser() {
-  await db.init();
   let user = { password: "toomanysecrets", roles: [{ role: Role.Admin }] };
   user.name = randomName();
   user.email = user.name + "@admin.com";
 
-  user = await db.addUser(user);
+  user = await DB.addUser(user);
   return { ...user, password: "toomanysecrets" };
 }
 
@@ -103,7 +102,7 @@ test("delete user as admin", async () => {
   expect(deleteUserRes.body).toMatchObject({ message: "user deleted" });
 
   // Step 4: Make sure that the user is actually gone from the db
-  await expect(db.getUser(testUser2.email, testUser2.password)).rejects.toThrow(
+  await expect(DB.getUser(testUser2.email, testUser2.password)).rejects.toThrow(
     StatusCodeError
   );
 });

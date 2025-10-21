@@ -1,6 +1,6 @@
 const express = require("express");
 const { asyncHandler, StatusCodeError } = require("../endpointHelper.js");
-const { db, Role } = require("../database/database.js");
+const { DB, Role } = require("../database/database.js");
 const { authRouter, setAuth } = require("./authRouter.js");
 
 const userRouter = express.Router();
@@ -73,7 +73,6 @@ userRouter.get(
   "/me",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    await db.init();
     res.json(req.user);
   })
 );
@@ -84,9 +83,7 @@ userRouter.get(
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
     if (req.user.isRole(Role.Admin)) {
-      await db.init();
-      const [users, more] = await db.getUsers(
-        req.user,
+      const [users, more] = await DB.getUsers(
         req.query.page,
         req.query.limit,
         req.query.name
@@ -103,7 +100,6 @@ userRouter.put(
   "/:userId",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    await db.init();
     const { name, email, password } = req.body;
     const userId = Number(req.params.userId);
     const user = req.user;
@@ -111,7 +107,7 @@ userRouter.put(
       return res.status(403).json({ message: "unauthorized" });
     }
 
-    const updatedUser = await db.updateUser(userId, name, email, password);
+    const updatedUser = await DB.updateUser(userId, name, email, password);
     const auth = await setAuth(updatedUser);
     res.json({ user: updatedUser, token: auth });
   })
@@ -122,14 +118,13 @@ userRouter.delete(
   "/:userId",
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    await db.init();
     const userId = Number(req.params.userId);
-    const foundUser = await db.getUserById(userId);
+    const foundUser = await DB.getUserById(userId);
     if (!foundUser || !req.user.isRole(Role.Admin)) {
       throw new StatusCodeError("unable to delete a user", 403);
     }
 
-    await db.deleteUser(userId);
+    await DB.deleteUser(userId);
     res.json({ message: "user deleted" });
   })
 );
