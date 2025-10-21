@@ -138,7 +138,7 @@ test("retrieve list of users", async () => {
     .get(`/api/user?page=0&limit=10&name=*ZZZZZ*`)
     .set("Authorization", `Bearer ${testAdminAuthToken}`);
   expect(userListRes.status).toBe(200);
-  expect(userListRes.body.users.length).toBeGreaterThan(4); // At least 4 users have 'ZZ' in their name
+  expect(userListRes.body.users.length).toBeGreaterThanOrEqual(4); // At least 4 users have 'ZZ' in their name
 });
 
 test("get list of users as non-admin", async () => {
