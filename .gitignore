@@ -6,3 +6,5 @@ coverage
 dist
 
 .env.test
+
+metrics.json
