@@ -10,8 +10,7 @@ function requestTracker(req, res, next) {
   next();
 }
 
-// This will periodically send metrics to Grafana
-setInterval(() => {
+function httpMetrics() {
   const metrics = [];
   Object.keys(requests).forEach((endpoint) => {
     metrics.push(
@@ -20,9 +19,21 @@ setInterval(() => {
       })
     );
   });
+  return metrics;
+}
 
-  sendMetricToGrafana(metrics);
-}, 10000);
+function systemMetrics() {
+  return [];
+}
+function userMetrics() {
+  return [];
+}
+function purchaseMetrics() {
+  return [];
+}
+function authMetrics() {
+  return [];
+}
 
 function createMetric(
   metricName,
@@ -64,35 +75,63 @@ function createMetric(
   return metric;
 }
 
-function sendMetricToGrafana(metrics) {
-  const body = {
-    resourceMetrics: [
-      {
-        scopeMetrics: [
-          {
-            metrics,
-          },
-        ],
-      },
-    ],
-  };
+class MetricBuilder {
+  constructor() {
+    this.metrics = [];
+  }
 
-  fetch(`${config.url}`, {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP status: ${response.status}`);
-      }
+  add(metricArray) {
+    if (Array.isArray(metricArray)) {
+      this.metrics.push(...metricArray);
+    }
+  }
+
+  async sendToGrafana() {
+    const body = {
+      resourceMetrics: [
+        {
+          scopeMetrics: [
+            {
+              metrics: this.metrics,
+            },
+          ],
+        },
+      ],
+    };
+
+    fetch(`${config.url}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
     })
-    .catch((error) => {
-      console.error("Error pushing metrics:", error);
-    });
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP status: ${response.status}`);
+        }
+      })
+      .catch((error) => {
+        console.error("Error pushing metrics:", error);
+      });
+  }
 }
 
-module.exports = { requestTracker };
+function sendMetricsPeriodically(period) {
+  setInterval(() => {
+    try {
+      const metricsBuilder = new MetricBuilder();
+      metricsBuilder.add(httpMetrics());
+      metricsBuilder.add(systemMetrics());
+      metricsBuilder.add(userMetrics());
+      metricsBuilder.add(purchaseMetrics());
+      metricsBuilder.add(authMetrics());
+      metricsBuilder.sendToGrafana();
+    } catch (error) {
+      console.error("Error sending metrics:", error);
+    }
+  }, period);
+}
+
+module.exports = { requestTracker, sendMetricsPeriodically };
