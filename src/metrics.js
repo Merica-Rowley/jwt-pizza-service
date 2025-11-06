@@ -6,6 +6,11 @@ const requests = {};
 const activeSessions = {}; // { userId: lastSeenTimestamp }
 const ACTIVE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
+const loginMetrics = {
+  success: 0,
+  failed: 0,
+};
+
 // Middleware to track requests
 function requestTracker(req, res, next) {
   // const endpoint = `[${req.method}] ${req.path}`;
@@ -34,6 +39,16 @@ function removeActiveSession(token) {
   delete activeSessions[token];
 }
 
+function recordSuccessfulLogin() {
+  loginMetrics.success++;
+}
+
+function recordFailedLogin() {
+  loginMetrics.failed++;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 function httpMetrics() {
   const metrics = [];
   Object.keys(requests).forEach((key) => {
@@ -52,6 +67,7 @@ function httpMetrics() {
 function systemMetrics() {
   return [];
 }
+
 function userMetrics() {
   return [
     createMetric(
@@ -64,11 +80,23 @@ function userMetrics() {
     ),
   ];
 }
+
 function purchaseMetrics() {
   return [];
 }
+
 function authMetrics() {
-  return [];
+  return [
+    createMetric(
+      "login_success",
+      loginMetrics.success,
+      "1",
+      "sum",
+      "asInt",
+      {}
+    ),
+    createMetric("login_failed", loginMetrics.failed, "1", "sum", "asInt", {}),
+  ];
 }
 
 function createMetric(
@@ -187,4 +215,6 @@ module.exports = {
   trackActiveSession,
   startActiveSessionCleanup,
   removeActiveSession,
+  recordFailedLogin,
+  recordSuccessfulLogin,
 };
