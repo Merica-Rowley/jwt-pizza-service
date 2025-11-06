@@ -3,19 +3,46 @@ const config = require("./config");
 // Metrics stored in memory
 const requests = {};
 
+const activeSessions = {}; // { userId: lastSeenTimestamp }
+const ACTIVE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
 // Middleware to track requests
 function requestTracker(req, res, next) {
-  const endpoint = `[${req.method}] ${req.path}`;
-  requests[endpoint] = (requests[endpoint] || 0) + 1;
+  // const endpoint = `[${req.method}] ${req.path}`;
+  // requests[endpoint] = (requests[endpoint] || 0) + 1;
+  const method = req.method;
+  const path = req.path;
+
+  const key = `${method} ${path}`; // e.g., "POST /api/user"
+  requests[key] = (requests[key] || 0) + 1;
+
   next();
+}
+
+// Middleware to track active users
+function trackActiveSession(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1]; // remove "Bearer " prefix
+    activeSessions[token] = Date.now();
+  }
+  next();
+}
+
+// Helper function to call from logout
+function removeActiveSession(token) {
+  delete activeSessions[token];
 }
 
 function httpMetrics() {
   const metrics = [];
-  Object.keys(requests).forEach((endpoint) => {
+  Object.keys(requests).forEach((key) => {
+    const [method, ...pathParts] = key.split(" ");
+    const path = pathParts.join(" ");
     metrics.push(
-      createMetric("requests", requests[endpoint], "1", "sum", "asInt", {
-        endpoint,
+      createMetric("requests", requests[key], "1", "sum", "asInt", {
+        endpoint: path,
+        method,
       })
     );
   });
@@ -26,7 +53,16 @@ function systemMetrics() {
   return [];
 }
 function userMetrics() {
-  return [];
+  return [
+    createMetric(
+      "active_users",
+      Object.keys(activeSessions).length,
+      "1",
+      "sum",
+      "asInt",
+      {}
+    ),
+  ];
 }
 function purchaseMetrics() {
   return [];
@@ -134,4 +170,21 @@ function sendMetricsPeriodically(period) {
   }, period);
 }
 
-module.exports = { requestTracker, sendMetricsPeriodically };
+function startActiveSessionCleanup(period) {
+  setInterval(() => {
+    const now = Date.now();
+    Object.keys(activeSessions).forEach((userId) => {
+      if (now - activeSessions[userId] > ACTIVE_TIMEOUT) {
+        delete activeSessions[userId];
+      }
+    });
+  }, period);
+}
+
+module.exports = {
+  requestTracker,
+  sendMetricsPeriodically,
+  trackActiveSession,
+  startActiveSessionCleanup,
+  removeActiveSession,
+};

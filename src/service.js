@@ -1,5 +1,10 @@
 const express = require("express");
-const { requestTracker, sendMetricsPeriodically } = require("./metrics");
+const {
+  trackActiveSession,
+  requestTracker,
+  sendMetricsPeriodically,
+  startActiveSessionCleanup,
+} = require("./metrics");
 const { authRouter, setAuthUser } = require("./routes/authRouter.js");
 const orderRouter = require("./routes/orderRouter.js");
 const franchiseRouter = require("./routes/franchiseRouter.js");
@@ -19,8 +24,10 @@ app.use((req, res, next) => {
 });
 
 // Metrics middleware and sending periodically
+app.use(trackActiveSession);
 app.use(requestTracker);
 sendMetricsPeriodically(10_000);
+startActiveSessionCleanup(60_000);
 
 const apiRouter = express.Router();
 app.use("/api", apiRouter);

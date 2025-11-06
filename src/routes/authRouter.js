@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const config = require("../config.js");
 const { asyncHandler } = require("../endpointHelper.js");
 const { DB, Role } = require("../database/database.js");
+const { removeActiveSession } = require("../metrics.js");
 
 const authRouter = express.Router();
 
@@ -110,6 +111,7 @@ authRouter.delete(
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
     await clearAuth(req);
+    removeActiveSession(readAuthToken(req));
     res.json({ message: "logout successful" });
   })
 );
