@@ -1,4 +1,5 @@
 const config = require("./config");
+const os = require("os");
 
 // Metrics stored in memory
 const requests = {};
@@ -10,6 +11,19 @@ const loginMetrics = {
   success: 0,
   failed: 0,
 };
+
+const pizzaPurchaseMetrics = {
+  pizzasSold: 0,
+  creationFailures: 0,
+  revenue: 0.0,
+};
+
+const pizzaLatencyMetrics = {
+  pizzaCreationLatency: 0,
+};
+
+let totalLatency = 0;
+let requestCount = 0;
 
 // Middleware to track requests
 function requestTracker(req, res, next) {
@@ -47,6 +61,46 @@ function recordFailedLogin() {
   loginMetrics.failed++;
 }
 
+function getCpuUsagePercentage() {
+  const cpuUsage = os.loadavg()[0] / os.cpus().length;
+  return Number(cpuUsage.toFixed(2)) * 100;
+}
+
+function getMemoryUsagePercentage() {
+  const totalMemory = os.totalmem();
+  const freeMemory = os.freemem();
+  const usedMemory = totalMemory - freeMemory;
+  const memoryUsage = (usedMemory / totalMemory) * 100;
+  return Number(memoryUsage.toFixed(2));
+}
+
+function recordPizzaSale(numPizzas, amount) {
+  pizzaPurchaseMetrics.pizzasSold += numPizzas;
+  pizzaPurchaseMetrics.revenue += amount;
+}
+
+function recordPizzaCreationFailure() {
+  pizzaPurchaseMetrics.creationFailures++;
+}
+
+function recordPizzaCreationLatency(latency) {
+  pizzaLatencyMetrics.pizzaCreationLatency += latency;
+}
+
+function latencyTracker(req, res, next) {
+  const start = performance.now();
+
+  res.on("finish", () => {
+    const end = performance.now();
+    const latency = end - start;
+
+    totalLatency += latency;
+    requestCount++;
+  });
+
+  next();
+}
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 function httpMetrics() {
@@ -65,7 +119,27 @@ function httpMetrics() {
 }
 
 function systemMetrics() {
-  return [];
+  const cpuPercent = getCpuUsagePercentage();
+  const memPercent = getMemoryUsagePercentage();
+
+  return [
+    createMetric(
+      "system_cpu_usage_percent",
+      cpuPercent,
+      "%",
+      "gauge",
+      "asDouble",
+      {}
+    ),
+    createMetric(
+      "system_memory_usage_percent",
+      memPercent,
+      "%",
+      "gauge",
+      "asDouble",
+      {}
+    ),
+  ];
 }
 
 function userMetrics() {
@@ -82,7 +156,40 @@ function userMetrics() {
 }
 
 function purchaseMetrics() {
-  return [];
+  return [
+    createMetric(
+      "pizzas_sold",
+      pizzaPurchaseMetrics.pizzasSold,
+      "1",
+      "sum",
+      "asInt",
+      {}
+    ),
+    createMetric(
+      "pizza_creation_failures",
+      pizzaPurchaseMetrics.creationFailures,
+      "1",
+      "sum",
+      "asInt",
+      {}
+    ),
+    createMetric(
+      "total_revenue",
+      pizzaPurchaseMetrics.revenue,
+      "USD",
+      "sum",
+      "asDouble",
+      {}
+    ),
+    createMetric(
+      "pizza_creation_latency",
+      pizzaLatencyMetrics.pizzaCreationLatency,
+      "ms",
+      "sum",
+      "asDouble",
+      {}
+    ),
+  ];
 }
 
 function authMetrics() {
@@ -96,6 +203,25 @@ function authMetrics() {
       {}
     ),
     createMetric("login_failed", loginMetrics.failed, "1", "sum", "asInt", {}),
+  ];
+}
+
+function latencyMetrics() {
+  const average = requestCount > 0 ? totalLatency / requestCount : 0;
+
+  // Reset after capturing so next interval starts fresh
+  totalLatency = 0;
+  requestCount = 0;
+
+  return [
+    createMetric(
+      "average_request_latency_ms",
+      average,
+      "ms",
+      "gauge",
+      "asDouble",
+      {}
+    ),
   ];
 }
 
@@ -191,6 +317,7 @@ function sendMetricsPeriodically(period) {
       metricsBuilder.add(userMetrics());
       metricsBuilder.add(purchaseMetrics());
       metricsBuilder.add(authMetrics());
+      metricsBuilder.add(latencyMetrics());
       metricsBuilder.sendToGrafana();
     } catch (error) {
       console.error("Error sending metrics:", error);
@@ -217,4 +344,8 @@ module.exports = {
   removeActiveSession,
   recordFailedLogin,
   recordSuccessfulLogin,
+  recordPizzaSale,
+  recordPizzaCreationFailure,
+  recordPizzaCreationLatency,
+  latencyTracker,
 };
