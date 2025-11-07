@@ -57,7 +57,7 @@ jobs:
             },
             metrics: {
               source: 'jwt-pizza-service',
-              url: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp/v1/metrics',
+              url: '${{ secrets.METRICS_URL }}',
               apiKey: '${{ secrets.METRICS_API_KEY }}',
             },            
           };" > src/config.js
