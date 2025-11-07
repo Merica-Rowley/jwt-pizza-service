@@ -289,6 +289,8 @@ class MetricBuilder {
       ],
     };
 
+    console.log(body); // For debugging
+
     fetch(`${config.url}`, {
       method: "POST",
       body: JSON.stringify(body),
