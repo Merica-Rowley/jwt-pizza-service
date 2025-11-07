@@ -289,7 +289,7 @@ class MetricBuilder {
       ],
     };
 
-    console.log(body); // For debugging
+    console.log("HERE IS MY REQUEST BODY: ", body); // For debugging
 
     fetch(`${config.url}`, {
       method: "POST",
