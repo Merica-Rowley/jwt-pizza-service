@@ -22,11 +22,21 @@ class Logger {
 
   dbLogger = (query, error = null) => {
     const logData = {
-      reqBody: query,
+      reqBody: JSON.stringify(query),
+      resBody: "",
       error: error ? error.message : undefined,
     };
     const level = error ? "error" : "info";
     this.log(level, "database", logData);
+  };
+
+  factoryLogger = (req, res, error = false) => {
+    const logData = {
+      reqBody: JSON.stringify(req),
+      resBody: JSON.stringify(res),
+    };
+    const level = error ? "error" : "info";
+    this.log(level, "factory", logData);
   };
 
   log(level, type, logData) {
@@ -53,10 +63,9 @@ class Logger {
 
   sanitize(logData) {
     logData = JSON.stringify(logData);
-    return logData.replace(
-      /\\"password\\":\s*\\"[^"]*\\"/g,
-      '\\"password\\": \\"*****\\"'
-    );
+    return logData
+      .replace(/\\"password\\":\s*\\"[^"]*\\"/g, '\\"password\\": \\"*****\\"')
+      .replace(/\\"jwt\\":\s*\\"[^"]*\\"/g, '\\"jwt\\": \\"*****\\"');
   }
 
   sendLogToGrafana(event) {

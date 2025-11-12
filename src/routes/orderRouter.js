@@ -8,6 +8,7 @@ const {
   recordPizzaCreationFailure,
   recordPizzaCreationLatency,
 } = require("../metrics.js");
+const logger = require("../logger.js");
 
 const orderRouter = express.Router();
 
@@ -123,34 +124,37 @@ orderRouter.post(
     try {
       const orderReq = req.body;
       const order = await DB.addDinerOrder(req.user, orderReq);
+      const factoryRequestBody = JSON.stringify({
+        diner: {
+          id: req.user.id,
+          name: req.user.name,
+          email: req.user.email,
+        },
+        order,
+      });
       const r = await fetch(`${config.factory.url}/api/order`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           authorization: `Bearer ${config.factory.apiKey}`,
         },
-        body: JSON.stringify({
-          diner: {
-            id: req.user.id,
-            name: req.user.name,
-            email: req.user.email,
-          },
-          order,
-        }),
+        body: factoryRequestBody,
       });
-      const j = await r.json();
+      const j = await r.json(); // j is the json of r's body (which is returned as a ReadableStream)
       if (r.ok) {
         recordPizzaSale(
           order.items.length,
           order.items.reduce((sum, item) => sum + item.price, 0)
         );
         res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
+        logger.factoryLogger(factoryRequestBody, j);
       } else {
         recordPizzaCreationFailure();
         res.status(500).send({
           message: "Failed to fulfill order at factory",
           followLinkToEndChaos: j.reportUrl,
         });
+        logger.factoryLogger(factoryRequestBody, JSON.stringify(j), true);
       }
     } finally {
       const end = performance.now();
