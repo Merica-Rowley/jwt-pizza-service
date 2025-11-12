@@ -20,6 +20,15 @@ class Logger {
     next();
   };
 
+  dbLogger = (query, error = null) => {
+    const logData = {
+      reqBody: query,
+      error: error ? error.message : undefined,
+    };
+    const level = error ? "error" : "info";
+    this.log(level, "database", logData);
+  };
+
   log(level, type, logData) {
     const labels = {
       component: config.logging.source,
