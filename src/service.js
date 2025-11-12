@@ -12,6 +12,7 @@ const franchiseRouter = require("./routes/franchiseRouter.js");
 const userRouter = require("./routes/userRouter.js");
 const version = require("./version.json");
 const config = require("./config.js");
+const logger = require("./logger.js");
 
 const app = express();
 app.use(express.json());
@@ -30,6 +31,9 @@ app.use(requestTracker);
 app.use(latencyTracker);
 sendMetricsPeriodically(10_000);
 startActiveSessionCleanup(60_000);
+
+// Logging middleware
+app.use(logger.httpLogger);
 
 const apiRouter = express.Router();
 app.use("/api", apiRouter);
