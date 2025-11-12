@@ -34,6 +34,7 @@ startActiveSessionCleanup(60_000);
 
 // Logging middleware
 app.use(logger.httpLogger);
+logger.initGlobalErrorHandlers();
 
 const apiRouter = express.Router();
 app.use("/api", apiRouter);

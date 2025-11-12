@@ -39,7 +39,23 @@ class Logger {
     this.log(level, "factory", logData);
   };
 
-  log(level, type, logData) {
+  initGlobalErrorHandlers() {
+    process.on("uncaughtException", async (err) => {
+      await this.log("error", "unhandledException", {
+        message: err.message,
+        stack: err.stack,
+      });
+    });
+
+    process.on("unhandledRejection", async (reason) => {
+      await this.log("error", "unhandledRejection", {
+        message: reason instanceof Error ? reason.message : String(reason),
+        stack: reason instanceof Error ? reason.stack : undefined,
+      });
+    });
+  }
+
+  async log(level, type, logData) {
     const labels = {
       component: config.logging.source,
       level: level,
@@ -48,7 +64,7 @@ class Logger {
     const values = [this.nowString(), this.sanitize(logData)];
     const logEvent = { streams: [{ stream: labels, values: [values] }] };
 
-    this.sendLogToGrafana(logEvent);
+    await this.sendLogToGrafana(logEvent);
   }
 
   statusToLogLevel(statusCode) {
@@ -68,7 +84,7 @@ class Logger {
       .replace(/\\"jwt\\":\s*\\"[^"]*\\"/g, '\\"jwt\\": \\"*****\\"');
   }
 
-  sendLogToGrafana(event) {
+  async sendLogToGrafana(event) {
     const body = JSON.stringify(event);
     fetch(`${config.logging.url}`, {
       method: "post",
