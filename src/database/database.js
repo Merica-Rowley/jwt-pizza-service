@@ -146,7 +146,7 @@ class DB {
     try {
       let users = await this.query(
         connection,
-        `SELECT id, name FROM user WHERE name LIKE ? LIMIT ${
+        `SELECT * FROM user WHERE name LIKE ? LIMIT ${
           limit + 1
         } OFFSET ${offset}`,
         [nameFilter]
