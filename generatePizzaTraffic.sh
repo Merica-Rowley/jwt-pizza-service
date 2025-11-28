@@ -38,8 +38,10 @@ pid1=$!
 
 # Simulate a user with an invalid email and password every 25 seconds
 while true; do
-  result=$(execute_curl "-X PUT \"$host/api/auth\" -d '{\"email\":\"unknown@jwt.com\", \"password\":\"bad\"}' -H 'Content-Type: application/json'")
-  echo "Logging in with invalid credentials..." $result
+  # result=$(execute_curl "-X PUT \"$host/api/auth\" -d '{\"email\":\"unknown@jwt.com\", \"password\":\"bad\"}' -H 'Content-Type: application/json'")
+  # echo "Logging in with invalid credentials..." $result
+  # sleep 25
+  echo "Skipping invalid login simulation..."
   sleep 25
 done &
 pid2=$!
@@ -70,20 +72,22 @@ pid4=$!
 
 # Simulate a failed pizza order every 5 minutes
 while true; do
-  token=$(login "d@jwt.com" "diner")
-  echo "Login hungry diner..." $( [ -z "$token" ] && echo "false" || echo "true" )
+  # token=$(login "d@jwt.com" "diner")
+  # echo "Login hungry diner..." $( [ -z "$token" ] && echo "false" || echo "true" )
 
-  items='{ "menuId": 1, "description": "Veggie", "price": 0.05 }'
-  for (( i=0; i < 21; i++ ))
-  do items+=', { "menuId": 1, "description": "Veggie", "price": 0.05 }'
-  done
+  # items='{ "menuId": 1, "description": "Veggie", "price": 0.05 }'
+  # for (( i=0; i < 21; i++ ))
+  # do items+=', { "menuId": 1, "description": "Veggie", "price": 0.05 }'
+  # done
   
-  result=$(execute_curl "-X POST $host/api/order -H 'Content-Type: application/json' -d '{\"franchiseId\": 1, \"storeId\":1, \"items\":[$items]}'  -H \"Authorization: Bearer $token\"")
-  echo "Bought too many pizzas..." $result  
-  sleep 5
-  result=$(execute_curl "-X DELETE $host/api/auth -H \"Authorization: Bearer $token\"")
-  echo "Logging out hungry diner..." $result
-  sleep 295
+  # result=$(execute_curl "-X POST $host/api/order -H 'Content-Type: application/json' -d '{\"franchiseId\": 1, \"storeId\":1, \"items\":[$items]}'  -H \"Authorization: Bearer $token\"")
+  # echo "Bought too many pizzas..." $result  
+  # sleep 5
+  # result=$(execute_curl "-X DELETE $host/api/auth -H \"Authorization: Bearer $token\"")
+  # echo "Logging out hungry diner..." $result
+  # sleep 295
+  echo "Skipping failed pizza order simulation..."
+  sleep 300
 done &
 pid5=$!
 
