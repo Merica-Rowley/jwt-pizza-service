@@ -9,26 +9,43 @@ const { recordSuccessfulLogin, recordFailedLogin } = require("../metrics.js");
 
 const authRouter = express.Router();
 
-const registerLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 5,
-  message: { message: "Too many registration attempts, try again later." },
-});
+const isTestEnv = process.env.DISABLE_RATE_LIMIT === "true";
 
-const loginLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  message: { message: "Too many login attempts, try again later." },
-});
+const registerLimiter = isTestEnv
+  ? (req, res, next) => next()
+  : rateLimit({
+      windowMs: 60 * 1000, // 1 minute
+      max: 5,
+      message: { message: "Too many registration attempts, try again later." },
+    });
+
+const loginLimiter = isTestEnv
+  ? (req, res, next) => next()
+  : rateLimit({
+      windowMs: 60 * 1000,
+      max: 5,
+      message: { message: "Too many login attempts, try again later." },
+    });
 
 const emailAttempts = new Map();
 
-function limitByEmail(maxAttempts, windowMs) {
+const limitByEmail = (maxAttempts, windowMs) =>
+  isTestEnv
+    ? (req, res, next) => next()
+    : realEmailLimiter(maxAttempts, windowMs);
+
+function realEmailLimiter(maxAttempts, windowMs) {
   return (req, res, next) => {
+    const now = Date.now();
+    for (const [email, attempts] of emailAttempts) {
+      if (attempts.every((ts) => now - ts >= windowMs)) {
+        emailAttempts.delete(email);
+      }
+    }
+
     const email = req.body.email?.toLowerCase();
     if (!email) return next();
 
-    const now = Date.now();
     const attempts = emailAttempts.get(email) || [];
     const recent = attempts.filter((ts) => now - ts < windowMs);
 
