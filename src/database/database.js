@@ -35,6 +35,10 @@ class DB {
   }
 
   async addUser(user) {
+    if (await this.emailExists(user.email)) {
+      throw new Error("Email already in use");
+    }
+
     const connection = await this.getConnection();
     try {
       const hashedPassword = await bcrypt.hash(user.password, 10);
@@ -161,21 +165,14 @@ class DB {
         return [[], false];
       }
 
-      const roles = [];
-      for (let i = 0; i < users.length; i++) {
-        const roleResult = await this.query(
-          connection,
-          `SELECT * FROM userRole WHERE userId=?`,
-          [users[i].id]
-        );
-        for (const r of roleResult) {
-          roles.push({
-            userId: users[i].id,
-            role: r.role,
-            objectId: r.objectId,
-          });
-        }
-      }
+      const userIds = users.map((u) => u.id);
+      const roles = await this.query(
+        connection,
+        `SELECT * FROM userRole WHERE userId IN (${userIds
+          .map(() => "?")
+          .join(",")})`,
+        userIds
+      );
 
       const rolesByUser = {};
       for (const r of roles) {
@@ -201,22 +198,34 @@ class DB {
   async updateUser(userId, name, email, password) {
     const connection = await this.getConnection();
     try {
-      const params = [];
+      const fields = [];
+      const values = [];
+
       if (password) {
         const hashedPassword = await bcrypt.hash(password, 10);
-        params.push(`password='${hashedPassword}'`);
+        fields.push("password = ?");
+        values.push(hashedPassword);
       }
+
       if (email) {
-        params.push(`email='${email}'`);
+        fields.push("email = ?");
+        values.push(email);
       }
+
       if (name) {
-        params.push(`name='${name}'`);
+        fields.push("name = ?");
+        values.push(name);
       }
-      if (params.length > 0) {
-        const query = `UPDATE user SET ${params.join(", ")} WHERE id=${userId}`;
-        await this.query(connection, query);
+
+      if (fields.length > 0) {
+        const sql = `UPDATE user SET ${fields.join(", ")} WHERE id = ?`;
+        values.push(userId); // Safe: passed as parameter, not interpolated
+
+        await this.query(connection, sql, values);
       }
-      return this.getUser(email, password);
+
+      // Return the updated record by ID (email may not be unique!)
+      return this.getUserById(userId);
     } finally {
       connection.end();
     }
@@ -440,9 +449,15 @@ class DB {
       }
 
       franchiseIds = franchiseIds.map((v) => v.objectId);
+      // const franchises = await this.query(
+      //   connection,
+      //   `SELECT id, name FROM franchise WHERE id in (${franchiseIds.join(",")})`
+      // );
+      const placeholders = franchiseIds.map(() => "?").join(",");
       const franchises = await this.query(
         connection,
-        `SELECT id, name FROM franchise WHERE id in (${franchiseIds.join(",")})`
+        `SELECT id, name FROM franchise WHERE id IN (${placeholders})`,
+        franchiseIds
       );
       for (const franchise of franchises) {
         await this.getFranchise(franchise);
@@ -496,6 +511,20 @@ class DB {
         `DELETE FROM store WHERE franchiseId=? AND id=?`,
         [franchiseId, storeId]
       );
+    } finally {
+      connection.end();
+    }
+  }
+
+  async emailExists(email) {
+    const connection = await this.getConnection();
+    try {
+      const results = await this.query(
+        connection,
+        `SELECT id FROM user WHERE email = ? LIMIT 1`,
+        [email]
+      );
+      return results.length > 0;
     } finally {
       connection.end();
     }
