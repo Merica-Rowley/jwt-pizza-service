@@ -157,7 +157,42 @@ class DB {
         users = users.slice(0, limit);
       }
 
-      return [users, more];
+      if (users.length === 0) {
+        return [[], false];
+      }
+
+      const roles = [];
+      for (let i = 0; i < users.length; i++) {
+        const roleResult = await this.query(
+          connection,
+          `SELECT * FROM userRole WHERE userId=?`,
+          [users[i].id]
+        );
+        for (const r of roleResult) {
+          roles.push({
+            userId: users[i].id,
+            role: r.role,
+            objectId: r.objectId,
+          });
+        }
+      }
+
+      const rolesByUser = {};
+      for (const r of roles) {
+        if (!rolesByUser[r.userId]) rolesByUser[r.userId] = [];
+        rolesByUser[r.userId].push({
+          role: r.role,
+          objectId: r.objectId || undefined,
+        });
+      }
+
+      const usersWithRoles = users.map((u) => ({
+        ...u,
+        roles: rolesByUser[u.id] || [],
+        password: undefined, // consistent with getUser()
+      }));
+
+      return [usersWithRoles, more];
     } finally {
       connection.end();
     }
@@ -321,7 +356,7 @@ class DB {
         await this.query(
           connection,
           `INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)`,
-          [admin.id, Role.Franchisee, franchise.id] // Hold on, why is this Role.Franchisee?
+          [admin.id, Role.Franchisee, franchise.id]
         );
       }
 
@@ -546,7 +581,7 @@ class DB {
           const defaultAdmin = {
             name: "常用名字",
             email: "a@jwt.com",
-            password: "admin",
+            password: "JWT4dm!n",
             roles: [{ role: Role.Admin }],
           };
           this.addUser(defaultAdmin);
