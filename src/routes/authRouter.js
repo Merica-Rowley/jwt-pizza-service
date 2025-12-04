@@ -1,4 +1,5 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const jwt = require("jsonwebtoken");
 const config = require("../config.js");
 const { asyncHandler } = require("../endpointHelper.js");
@@ -7,6 +8,18 @@ const { removeActiveSession } = require("../metrics.js");
 const { recordSuccessfulLogin, recordFailedLogin } = require("../metrics.js");
 
 const authRouter = express.Router();
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,
+  message: { message: "Too many registration attempts, try again later." },
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { message: "Too many login attempts, try again later." },
+});
 
 authRouter.docs = [
   {
@@ -77,6 +90,7 @@ authRouter.authenticateToken = (req, res, next) => {
 // register
 authRouter.post(
   "/",
+  registerLimiter,
   asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -98,6 +112,7 @@ authRouter.post(
 // login
 authRouter.put(
   "/",
+  loginLimiter,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
