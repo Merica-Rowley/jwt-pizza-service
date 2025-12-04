@@ -84,21 +84,17 @@ franchiseRouter.get(
     const page = parseInt(req.query.page, 10);
     const limit = parseInt(req.query.limit, 10);
 
-    if (isNaN(page) || page < 0) {
-      return res.status(400).json({ message: "Invalid page number" });
-    }
-    if (isNaN(limit) || limit <= 0 || limit > 100) {
-      // max limit 100 to prevent huge queries
-      return res.status(400).json({ message: "Invalid limit" });
-    }
+    // Default if not provided
+    const safePage = isNaN(page) || page < 0 ? 0 : page;
+    const safeLimit = isNaN(limit) || limit <= 0 || limit > 100 ? 10 : limit;
 
     let nameFilter = req.query.name || "*";
     if (typeof nameFilter !== "string") nameFilter = "*"; // ensure string
 
     const [franchises, more] = await DB.getFranchises(
       req.user,
-      page,
-      limit,
+      safePage,
+      safeLimit,
       nameFilter
     );
     res.json({ franchises, more });
