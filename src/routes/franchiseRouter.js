@@ -92,11 +92,14 @@ franchiseRouter.get(
       return res.status(400).json({ message: "Invalid limit" });
     }
 
+    let nameFilter = req.query.name || "*";
+    if (typeof nameFilter !== "string") nameFilter = "*"; // ensure string
+
     const [franchises, more] = await DB.getFranchises(
       req.user,
       page,
       limit,
-      req.query.name
+      nameFilter
     );
     res.json({ franchises, more });
   })
