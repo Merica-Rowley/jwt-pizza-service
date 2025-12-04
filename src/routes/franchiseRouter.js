@@ -80,10 +80,22 @@ franchiseRouter.docs = [
 franchiseRouter.get(
   "/",
   asyncHandler(async (req, res) => {
+    // Parse and validate pagination
+    const page = parseInt(req.query.page, 10);
+    const limit = parseInt(req.query.limit, 10);
+
+    if (isNaN(page) || page < 0) {
+      return res.status(400).json({ message: "Invalid page number" });
+    }
+    if (isNaN(limit) || limit <= 0 || limit > 100) {
+      // max limit 100 to prevent huge queries
+      return res.status(400).json({ message: "Invalid limit" });
+    }
+
     const [franchises, more] = await DB.getFranchises(
       req.user,
-      req.query.page,
-      req.query.limit,
+      page,
+      limit,
       req.query.name
     );
     res.json({ franchises, more });

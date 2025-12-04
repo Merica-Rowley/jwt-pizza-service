@@ -83,11 +83,18 @@ userRouter.get(
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
     if (req.user.isRole(Role.Admin)) {
-      const [users, more] = await DB.getUsers(
-        req.query.page,
-        req.query.limit,
-        req.query.name
-      );
+      const page = parseInt(req.query.page, 10);
+      const limit = parseInt(req.query.limit, 10);
+
+      if (isNaN(page) || page < 0) {
+        return res.status(400).json({ message: "Invalid page number" });
+      }
+      if (isNaN(limit) || limit <= 0 || limit > 100) {
+        // max limit to prevent excessive DB load
+        return res.status(400).json({ message: "Invalid limit" });
+      }
+
+      const [users, more] = await DB.getUsers(page, limit, req.query.name);
       res.json({ users, more });
     } else {
       return res.status(403).json({ message: "unauthorized" });
