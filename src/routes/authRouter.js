@@ -21,6 +21,30 @@ const loginLimiter = rateLimit({
   message: { message: "Too many login attempts, try again later." },
 });
 
+const emailAttempts = new Map();
+
+function limitByEmail(maxAttempts, windowMs) {
+  return (req, res, next) => {
+    const email = req.body.email?.toLowerCase();
+    if (!email) return next();
+
+    const now = Date.now();
+    const attempts = emailAttempts.get(email) || [];
+    const recent = attempts.filter((ts) => now - ts < windowMs);
+
+    if (recent.length >= maxAttempts) {
+      return res.status(429).json({
+        message: "Too many attempts for this account. Please wait a bit.",
+      });
+    }
+
+    recent.push(now);
+    emailAttempts.set(email, recent);
+
+    next();
+  };
+}
+
 authRouter.docs = [
   {
     method: "POST",
@@ -112,7 +136,8 @@ authRouter.post(
 // login
 authRouter.put(
   "/",
-  loginLimiter,
+  loginLimiter, // limits by IP
+  limitByEmail(5, 60000), // limits by email
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
